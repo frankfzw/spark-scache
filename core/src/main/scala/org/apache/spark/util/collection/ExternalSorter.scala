@@ -661,7 +661,9 @@ private[spark] class ExternalSorter[K, V, C](
         lengths(partitionId) = segment.length
         if (blockId.isShuffle) {
           val mapid = blockId.asInstanceOf[ShuffleBlockId].mapId
-          logInfo(s"frankfzw: mapid ${mapid} reduceid ${partitionId} size ${segment.length}")
+          val shuffleid = blockId.asInstanceOf[ShuffleBlockId].shuffleId
+          logInfo(s"frankfzw: shuffleid ${shuffleid} " +
+            s"mapid ${mapid} reduceid ${partitionId} size ${segment.length}")
         }
       }
     } else {
@@ -678,7 +680,9 @@ private[spark] class ExternalSorter[K, V, C](
           lengths(id) = segment.length
           if (blockId.isShuffle) {
             val mapid = blockId.asInstanceOf[ShuffleBlockId].mapId
-            logInfo(s"frankfzw: mapid ${mapid} reduceid ${id} size ${segment.length}")
+            val shuffleid = blockId.asInstanceOf[ShuffleBlockId].shuffleId
+            logInfo(s"frankfzw: shuffleid ${shuffleid} " +
+              s"mapid ${mapid} reduceid ${id} size ${segment.length}")
           }
         }
       }
