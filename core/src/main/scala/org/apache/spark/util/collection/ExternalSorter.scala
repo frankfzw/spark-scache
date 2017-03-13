@@ -22,14 +22,12 @@ import java.util.Comparator
 
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable
-
 import com.google.common.io.ByteStreams
-
 import org.apache.spark._
 import org.apache.spark.memory.TaskMemoryManager
 import org.apache.spark.serializer._
 import org.apache.spark.executor.ShuffleWriteMetrics
-import org.apache.spark.storage.{BlockId, DiskBlockObjectWriter}
+import org.apache.spark.storage.{BlockId, DiskBlockObjectWriter, ShuffleBlockId}
 
 /**
  * Sorts and potentially merges a number of key-value pairs of type (K, V) to produce key-combiner
@@ -661,7 +659,10 @@ private[spark] class ExternalSorter[K, V, C](
         writer.commitAndClose()
         val segment = writer.fileSegment()
         lengths(partitionId) = segment.length
-        logInfo(s"frankfzw: ${blockId} for partition ${partitionId} size: ${segment.length}")
+        if (blockId.isShuffle) {
+          val mapid = blockId.asInstanceOf[ShuffleBlockId].mapId
+          logInfo(s"frankfzw: mapid ${mapid} reduceid ${partitionId} size ${segment.length}")
+        }
       }
     } else {
       // We must perform merge-sort; get an iterator by partition and write everything directly.
@@ -675,7 +676,10 @@ private[spark] class ExternalSorter[K, V, C](
           writer.commitAndClose()
           val segment = writer.fileSegment()
           lengths(id) = segment.length
-          logInfo(s"frankfzw: ${blockId} for partition ${id} size: ${segment.length}")
+          if (blockId.isShuffle) {
+            val mapid = blockId.asInstanceOf[ShuffleBlockId].mapId
+            logInfo(s"frankfzw: mapid ${mapid} reduceid ${id} size ${segment.length}")
+          }
         }
       }
     }
