@@ -663,7 +663,7 @@ private[spark] class ExternalSorter[K, V, C](
           val mapid = blockId.asInstanceOf[ShuffleBlockId].mapId
           val shuffleid = blockId.asInstanceOf[ShuffleBlockId].shuffleId
           logInfo(s"frankfzw: shuffleid ${shuffleid} " +
-            s"mapid ${mapid} reduceid ${partitionId} size ${segment.length}")
+            s"mapid ${mapid} reduceid ${partitionId} size ${segment.length} partitioner ${partitioner.getClass.getName}")
         }
       }
     } else {

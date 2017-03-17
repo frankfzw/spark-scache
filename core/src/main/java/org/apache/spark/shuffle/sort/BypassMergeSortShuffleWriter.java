@@ -190,7 +190,8 @@ final class BypassMergeSortShuffleWriter<K, V> extends ShuffleWriter<K, V> {
         try {
           lengths[i] = Utils.copyStream(in, out, false, transferToEnabled);
           copyThrewException = false;
-          logger.info("frankfzw: shuffleid " + this.shuffleId + " mapid " + this.mapId + " reduceid " + i + " size " + lengths[i]);
+          logger.info("frankfzw: shuffleid " + this.shuffleId + " mapid " + this.mapId + " reduceid " + i + " size " + lengths[i]
+                      + " partitioner " + partitioner.getClass().getName());
         } finally {
           Closeables.close(in, copyThrewException);
         }
