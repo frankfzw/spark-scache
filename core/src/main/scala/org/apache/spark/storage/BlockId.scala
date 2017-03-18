@@ -85,6 +85,12 @@ case class StreamBlockId(streamId: Int, uniqueId: Long) extends BlockId {
   override def name: String = "input-" + streamId + "-" + uniqueId
 }
 
+// frankfzw: used to transfer block to SCache
+case class ScacheBlockId(app: String, jobId: Int, shuffleId: Int, mapId: Int, reduceId: Int)
+  extends BlockId {
+  override def name: String = app + "_" + jobId + "_" + shuffleId + "_" + mapId + "_" + reduceId
+}
+
 /** Id associated with temporary local data managed as blocks. Not serializable. */
 private[spark] case class TempLocalBlockId(id: UUID) extends BlockId {
   override def name: String = "temp_local_" + id
@@ -109,6 +115,7 @@ object BlockId {
   val BROADCAST = "broadcast_([0-9]+)([_A-Za-z0-9]*)".r
   val TASKRESULT = "taskresult_([0-9]+)".r
   val STREAM = "input-([0-9]+)-([0-9]+)".r
+  val SCACHEBLOCK = "(.*)_([0-9]+)_([0-9]+)_([0-9]+)_([0-9]+)".r
   val TEST = "test_(.*)".r
 
   /** Converts a BlockId "name" String back into a BlockId. */
@@ -127,6 +134,8 @@ object BlockId {
       TaskResultBlockId(taskId.toLong)
     case STREAM(streamId, uniqueId) =>
       StreamBlockId(streamId.toInt, uniqueId.toLong)
+    case SCACHEBLOCK(app, jobId, shuffleId, mapId, reduceId) =>
+      ScacheBlockId(app, jobId.toInt, shuffleId.toInt, mapId.toInt, reduceId.toInt)
     case TEST(value) =>
       TestBlockId(value)
     case _ =>
