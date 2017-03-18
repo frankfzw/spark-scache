@@ -115,9 +115,9 @@ class RangePartitioner[K : Ordering : ClassTag, V](
   private var ordering = implicitly[Ordering[K]]
 
   // An array of upper bounds for the first (partitions - 1) partitions
-  private var rangeBounds: Array[K] = {
+  val rangeBoundsAndDistribution = {
     if (partitions <= 1) {
-      Array.empty
+      (Array.empty[K], Array.empty[(Int, Float)])
     } else {
       // This is the sample size we need to have roughly balanced output partitions, capped at 1M.
       val sampleSize = math.min(20.0 * partitions, 1e6)
@@ -125,13 +125,13 @@ class RangePartitioner[K : Ordering : ClassTag, V](
       val sampleSizePerPartition = math.ceil(3.0 * sampleSize / rdd.partitions.size).toInt
       val (numItems, sketched) = RangePartitioner.sketch(rdd.map(_._1), sampleSizePerPartition)
       if (numItems == 0L) {
-        Array.empty
+        (Array.empty[K], Array.empty[(Int, Float)])
       } else {
         // If a partition contains much more than the average number of items, we re-sample from it
         // to ensure that enough items are collected from that partition.
         val fraction = math.min(sampleSize / math.max(numItems, 1L), 1.0)
-        val candidates = ArrayBuffer.empty[(K, Float)]
-        val imbalancedPartitions = mutable.Set.empty[Int]
+        val candidates = ArrayBuffer.empty[(K, Float, Int)]
+        val imbalancedPartitions = mutable.ArrayBuffer.empty[Int]
         sketched.foreach { case (idx, n, sample) =>
           if (fraction * n > sampleSizePerPartition) {
             imbalancedPartitions += idx
@@ -139,7 +139,7 @@ class RangePartitioner[K : Ordering : ClassTag, V](
             // The weight is 1 over the sampling probability.
             val weight = (n.toDouble / sample.size).toFloat
             for (key <- sample) {
-              candidates += ((key, weight))
+              candidates += ((key, weight, idx))
             }
           }
         }
@@ -147,14 +147,25 @@ class RangePartitioner[K : Ordering : ClassTag, V](
           // Re-sample imbalanced partitions with the desired sampling probability.
           val imbalanced = new PartitionPruningRDD(rdd.map(_._1), imbalancedPartitions.contains)
           val seed = byteswap32(-rdd.id - 1)
-          val reSampled = imbalanced.sample(withReplacement = false, fraction, seed).collect()
+          val reSampled = imbalanced.sample(withReplacement = false, fraction, seed)
+            .mapPartitionsWithIndex { (idx, samples) =>
+              Iterator((idx, samples.toArray))
+            }.collect()
           val weight = (1.0 / fraction).toFloat
-          candidates ++= reSampled.map(x => (x, weight))
+          reSampled.foreach { case(idx, samples) =>
+            for (key <- samples) {
+              // frankfzw: since pruning will change the partition index
+              //           we need to find the original partition number here
+              candidates += ((key, weight, imbalancedPartitions(idx)))
+            }
+          }
         }
-        RangePartitioner.determineBounds(candidates, partitions)
+        RangePartitioner.determineBounds(candidates, partitions, rdd.partitions.size)
       }
     }
   }
+  private var rangeBounds: Array[K] = rangeBoundsAndDistribution._1
+  private val distribution: Array[(Int, Float)] = rangeBoundsAndDistribution._2
 
   def numPartitions: Int = rangeBounds.length + 1
 
@@ -185,6 +196,8 @@ class RangePartitioner[K : Ordering : ClassTag, V](
       rangeBounds.length - partition
     }
   }
+
+  def getDistribution(): Array[(Int, Float)] = distribution
 
   override def equals(other: Any): Boolean = other match {
     case r: RangePartitioner[_, _] =>
@@ -275,8 +288,9 @@ private[spark] object RangePartitioner {
    * @return selected bounds
    */
   def determineBounds[K : Ordering : ClassTag](
-      candidates: ArrayBuffer[(K, Float)],
-      partitions: Int): Array[K] = {
+      candidates: ArrayBuffer[(K, Float, Int)],
+      partitions: Int,
+      depPartitionNum: Int): (Array[K], Array[(Int, Float)]) = {
     val ordering = implicitly[Ordering[K]]
     val ordered = candidates.sortBy(_._1)
     val numCandidates = ordered.size
@@ -285,12 +299,24 @@ private[spark] object RangePartitioner {
     var cumWeight = 0.0
     var target = step
     val bounds = ArrayBuffer.empty[K]
+    val distribution = ArrayBuffer.empty[(Int, Float)]
     var i = 0
     var j = 0
+    // frankfzw: add data to calculate reduce distribution
+    var tmpArray = Array.fill[Int](depPartitionNum)(0)
+    var sum = 0;
+    var max = 0;
+    var maxIndex = 0;
     var previousBound = Option.empty[K]
     while ((i < numCandidates) && (j < partitions - 1)) {
-      val (key, weight) = ordered(i)
+      val (key, weight, index) = ordered(i)
       cumWeight += weight
+      tmpArray(index) += 1
+      sum += 1
+      if (tmpArray(index) > max) {
+        max = tmpArray(index)
+        maxIndex = index
+      }
       if (cumWeight >= target) {
         // Skip duplicate values.
         if (previousBound.isEmpty || ordering.gt(key, previousBound.get)) {
@@ -298,10 +324,17 @@ private[spark] object RangePartitioner {
           target += step
           j += 1
           previousBound = Some(key)
+
+          // update distribuition array here
+          distribution += ((maxIndex, max.toFloat / math.max(sum.toFloat, 1L)))
+          maxIndex = 0
+          sum = 0
+          max = 0;
+          tmpArray = Array.fill[Int](depPartitionNum)(0)
         }
       }
       i += 1
     }
-    bounds.toArray
+    (bounds.toArray, distribution.toArray)
   }
 }
