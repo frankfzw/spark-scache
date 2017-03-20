@@ -344,6 +344,7 @@ private[spark] object RangePartitioner {
         max = tmpArray(index)
         maxIndex = index
       }
+      i += 1
     }
     distribution += ((maxIndex, max.toFloat / math.max(sum.toFloat, 1L)))
     (bounds.toArray, distribution.toArray)
