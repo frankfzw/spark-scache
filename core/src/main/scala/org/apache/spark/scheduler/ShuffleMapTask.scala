@@ -72,7 +72,8 @@ private[spark] class ShuffleMapTask(
       writer = manager.getWriter[Any, Any](dep.shuffleHandle, partitionId, context)
       writer.write(rdd.iterator(partition, context).asInstanceOf[Iterator[_ <: Product2[Any, Any]]])
       if (dep.partitioner.getClass.getName.equals(RangePartitioner.getClass.getName)) {
-        val distribution = dep.partitioner.asInstanceOf[RangePartitioner].getDistribution()
+        val distribution = dep.partitioner.asInstanceOf[RangePartitioner[Any, Any]]
+                              .getDistribution()
         for (i <- 0 until distribution.length) {
           logInfo(s"frankfzw: reduceid ${i} maxDataFrom ${distribution(i)._1} " +
             s"probability ${distribution(i)._2}")

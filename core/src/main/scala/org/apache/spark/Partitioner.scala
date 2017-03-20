@@ -335,6 +335,17 @@ private[spark] object RangePartitioner {
       }
       i += 1
     }
+    while (i < numCandidates) {
+      // calculate the distribution of last partition
+      val (key, weight, index) = ordered(i)
+      tmpArray(index) += 1
+      sum += 1
+      if (tmpArray(index) > max) {
+        max = tmpArray(index)
+        maxIndex = index
+      }
+    }
+    distribution += ((maxIndex, max.toFloat / math.max(sum.toFloat, 1L)))
     (bounds.toArray, distribution.toArray)
   }
 }
