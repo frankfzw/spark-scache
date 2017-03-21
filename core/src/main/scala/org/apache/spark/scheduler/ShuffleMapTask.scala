@@ -71,7 +71,9 @@ private[spark] class ShuffleMapTask(
       val manager = SparkEnv.get.shuffleManager
       writer = manager.getWriter[Any, Any](dep.shuffleHandle, partitionId, context)
       writer.write(rdd.iterator(partition, context).asInstanceOf[Iterator[_ <: Product2[Any, Any]]])
-      if (dep.partitioner.getClass.getName.equals(RangePartitioner.getClass.getName)) {
+      val classTag = RangePartitioner.getClass.getSimpleName.substring(0,
+        RangePartitioner.getClass.getSimpleName.length - 1)
+      if (dep.partitioner.getClass.getSimpleName.equals(classTag)) {
         val distribution = dep.partitioner.asInstanceOf[RangePartitioner[Any, Any]]
                               .getDistribution()
         for (i <- 0 until distribution.length) {
@@ -79,7 +81,8 @@ private[spark] class ShuffleMapTask(
             s"probability ${distribution(i)._2}")
         }
       }
-      logInfo(s"frankfzw: ShuffleMapTask ${toString} finished, writer ${writer.getClass.getName}")
+      logInfo(s"frankfzw: ShuffleMapTask ${toString} finished, " +
+        s"writer ${writer.getClass.getSimpleName}")
       writer.stop(success = true).get
     } catch {
       case e: Exception =>

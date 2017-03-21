@@ -115,7 +115,7 @@ class RangePartitioner[K : Ordering : ClassTag, V](
   private var ordering = implicitly[Ordering[K]]
 
   // An array of upper bounds for the first (partitions - 1) partitions
-  val rangeBoundsAndDistribution = {
+  private var (rangeBounds, distribution) = {
     if (partitions <= 1) {
       (Array.empty[K], Array.empty[(Int, Float)])
     } else {
@@ -164,8 +164,7 @@ class RangePartitioner[K : Ordering : ClassTag, V](
       }
     }
   }
-  private var rangeBounds: Array[K] = rangeBoundsAndDistribution._1
-  private val distribution: Array[(Int, Float)] = rangeBoundsAndDistribution._2
+
 
   def numPartitions: Int = rangeBounds.length + 1
 
@@ -197,7 +196,9 @@ class RangePartitioner[K : Ordering : ClassTag, V](
     }
   }
 
-  def getDistribution(): Array[(Int, Float)] = distribution
+  def getDistribution(): Array[(Int, Float)] = {
+    return distribution
+  }
 
   override def equals(other: Any): Boolean = other match {
     case r: RangePartitioner[_, _] =>
@@ -233,6 +234,7 @@ class RangePartitioner[K : Ordering : ClassTag, V](
           stream.writeObject(scala.reflect.classTag[Array[K]])
           stream.writeObject(rangeBounds)
         }
+        out.writeObject(distribution)
     }
   }
 
@@ -251,6 +253,7 @@ class RangePartitioner[K : Ordering : ClassTag, V](
           implicit val classTag = ds.readObject[ClassTag[Array[K]]]()
           rangeBounds = ds.readObject[Array[K]]()
         }
+        distribution = in.readObject().asInstanceOf[Array[(Int, Float)]]
     }
   }
 }
