@@ -196,7 +196,7 @@ class RangePartitioner[K : Ordering : ClassTag, V](
     }
   }
 
-  def getDistribution(): Array[(Int, Float)] = {
+  def getDistribution(): Array[Array[Int]] = {
     return distribution
   }
 
@@ -253,7 +253,7 @@ class RangePartitioner[K : Ordering : ClassTag, V](
           implicit val classTag = ds.readObject[ClassTag[Array[K]]]()
           rangeBounds = ds.readObject[Array[K]]()
         }
-        distribution = in.readObject().asInstanceOf[Array[(Int, Float)]]
+        distribution = in.readObject().asInstanceOf[Array[Array[Int]]]
     }
   }
 }
@@ -293,7 +293,7 @@ private[spark] object RangePartitioner {
   def determineBounds[K : Ordering : ClassTag](
       candidates: ArrayBuffer[(K, Float, Int)],
       partitions: Int,
-      depPartitionNum: Int): (Array[K], Array[(Int, Float)]) = {
+      depPartitionNum: Int): (Array[K], Array[Array[Int]]) = {
     val ordering = implicitly[Ordering[K]]
     val ordered = candidates.sortBy(_._1)
     val numCandidates = ordered.size
@@ -302,24 +302,15 @@ private[spark] object RangePartitioner {
     var cumWeight = 0.0
     var target = step
     val bounds = ArrayBuffer.empty[K]
-    val distribution = ArrayBuffer.empty[(Int, Float)]
+    val distribution = new Array[Array[Int]](depPartitionNum)
+    distribution.map(x => new Array[Int](partitions))
     var i = 0
     var j = 0
-    // frankfzw: add data to calculate reduce distribution
-    var tmpArray = Array.fill[Int](depPartitionNum)(0)
-    var sum = 0;
-    var max = 0;
-    var maxIndex = 0;
     var previousBound = Option.empty[K]
     while ((i < numCandidates) && (j < partitions - 1)) {
       val (key, weight, index) = ordered(i)
       cumWeight += weight
-      tmpArray(index) += 1
-      sum += 1
-      if (tmpArray(index) > max) {
-        max = tmpArray(index)
-        maxIndex = index
-      }
+      distribution(index)(j) += 1
       if (cumWeight >= target) {
         // Skip duplicate values.
         if (previousBound.isEmpty || ordering.gt(key, previousBound.get)) {
@@ -327,13 +318,6 @@ private[spark] object RangePartitioner {
           target += step
           j += 1
           previousBound = Some(key)
-
-          // update distribuition array here
-          distribution += ((maxIndex, max.toFloat / math.max(sum.toFloat, 1L)))
-          maxIndex = 0
-          sum = 0
-          max = 0;
-          tmpArray = Array.fill[Int](depPartitionNum)(0)
         }
       }
       i += 1
@@ -341,15 +325,9 @@ private[spark] object RangePartitioner {
     while (i < numCandidates) {
       // calculate the distribution of last partition
       val (key, weight, index) = ordered(i)
-      tmpArray(index) += 1
-      sum += 1
-      if (tmpArray(index) > max) {
-        max = tmpArray(index)
-        maxIndex = index
-      }
+      distribution(index)(j) += 1
       i += 1
     }
-    distribution += ((maxIndex, max.toFloat / math.max(sum.toFloat, 1L)))
-    (bounds.toArray, distribution.toArray)
+    (bounds.toArray, distribution)
   }
 }

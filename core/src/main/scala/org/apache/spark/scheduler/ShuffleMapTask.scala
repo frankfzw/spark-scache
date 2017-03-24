@@ -76,7 +76,7 @@ private[spark] class ShuffleMapTask(
       if (dep.partitioner.getClass.getSimpleName.equals(classTag)) {
         val distribution = dep.partitioner.asInstanceOf[RangePartitioner[Any, Any]]
                               .getDistribution()
-        for (i <- 0 until distribution.length) {
+        for (i <- 0 until distribution.length if distribution(i)._1 == partition.index) {
           logInfo(s"frankfzw: reduceid ${i} maxDataFrom ${distribution(i)._1} " +
             s"probability ${distribution(i)._2}")
         }
