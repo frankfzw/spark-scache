@@ -117,7 +117,7 @@ class RangePartitioner[K : Ordering : ClassTag, V](
   // An array of upper bounds for the first (partitions - 1) partitions
   private var (rangeBounds, distribution) = {
     if (partitions <= 1) {
-      (Array.empty[K], Array.empty[(Int, Float)])
+      (Array.empty[K], Array.empty[Array[Int]])
     } else {
       // This is the sample size we need to have roughly balanced output partitions, capped at 1M.
       val sampleSize = math.min(20.0 * partitions, 1e6)
@@ -125,7 +125,7 @@ class RangePartitioner[K : Ordering : ClassTag, V](
       val sampleSizePerPartition = math.ceil(3.0 * sampleSize / rdd.partitions.size).toInt
       val (numItems, sketched) = RangePartitioner.sketch(rdd.map(_._1), sampleSizePerPartition)
       if (numItems == 0L) {
-        (Array.empty[K], Array.empty[(Int, Float)])
+        (Array.empty[K], Array.empty[Array[Int]])
       } else {
         // If a partition contains much more than the average number of items, we re-sample from it
         // to ensure that enough items are collected from that partition.
@@ -302,8 +302,8 @@ private[spark] object RangePartitioner {
     var cumWeight = 0.0
     var target = step
     val bounds = ArrayBuffer.empty[K]
-    val distribution = new Array[Array[Int]](depPartitionNum)
-    distribution.map(x => new Array[Int](partitions))
+    val distribution = Array.fill[Int](depPartitionNum)(0)
+      .map(x => new Array[Int](partitions))
     var i = 0
     var j = 0
     var previousBound = Option.empty[K]
