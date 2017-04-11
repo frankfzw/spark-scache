@@ -22,10 +22,8 @@ import java.net.Socket
 
 import scala.collection.mutable
 import scala.util.Properties
-
 import akka.actor.ActorSystem
 import com.google.common.collect.MapMaker
-
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.api.python.PythonWorkerFactory
 import org.apache.spark.broadcast.BroadcastManager
@@ -33,12 +31,13 @@ import org.apache.spark.metrics.MetricsSystem
 import org.apache.spark.memory.{MemoryManager, StaticMemoryManager, UnifiedMemoryManager}
 import org.apache.spark.network.BlockTransferService
 import org.apache.spark.network.netty.NettyBlockTransferService
-import org.apache.spark.rpc.{RpcEndpointRef, RpcEndpoint, RpcEnv}
+import org.apache.spark.rpc.{RpcEndpoint, RpcEndpointRef, RpcEnv}
 import org.apache.spark.rpc.akka.AkkaRpcEnv
-import org.apache.spark.scheduler.{OutputCommitCoordinator, LiveListenerBus}
+import org.apache.spark.scheduler.{LiveListenerBus, OutputCommitCoordinator}
 import org.apache.spark.scheduler.OutputCommitCoordinator.OutputCommitCoordinatorEndpoint
 import org.apache.spark.serializer.Serializer
 import org.apache.spark.shuffle.ShuffleManager
+import org.apache.spark.shuffle.scache.ScacheDaemon
 import org.apache.spark.storage._
 import org.apache.spark.util.{AkkaUtils, RpcUtils, Utils}
 
@@ -70,10 +69,11 @@ class SparkEnv (
     val metricsSystem: MetricsSystem,
     val memoryManager: MemoryManager,
     val outputCommitCoordinator: OutputCommitCoordinator,
+    val scacheDaemon: ScacheDaemon,
     val conf: SparkConf) extends Logging {
 
   // TODO Remove actorSystem
-  @deprecated("Actor system is no longer supported as of 1.4.0", "1.4.0")
+  @deprecated("Actor system is n longer supported as of 1.4.0", "1.4.0")
   val actorSystem: ActorSystem = _actorSystem
 
   private[spark] var isStopped = false
@@ -401,6 +401,9 @@ object SparkEnv extends Logging {
       new OutputCommitCoordinatorEndpoint(rpcEnv, outputCommitCoordinator))
     outputCommitCoordinator.coordinatorRef = Some(outputCommitCoordinatorRef)
 
+    // frankfzw: Init ScacheDaemon if necessary
+    val scacheDaemon = new ScacheDaemon(conf, rpcEnv)
+
     val envInstance = new SparkEnv(
       executorId,
       rpcEnv,
@@ -418,6 +421,7 @@ object SparkEnv extends Logging {
       metricsSystem,
       memoryManager,
       outputCommitCoordinator,
+      scacheDaemon,
       conf)
 
     // Add a reference to tmp dir created by driver, we will delete this tmp dir when stop() is

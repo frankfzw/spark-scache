@@ -107,6 +107,14 @@ private[spark] abstract class RpcEnv(conf: SparkConf) {
   }
 
   /**
+   * Retrieve the [[RpcEndpointRef]] for represented by `systemName`, `address` and `endpointName`.
+   * This is a function to setup scache rpc ref.
+   */
+  def setupScacheEndpointRef(
+      systemName: String, address: RpcAddress, endpointName: String): RpcEndpointRef = {
+    val uri = uriOf(systemName, address, endpointName)
+  }
+  /**
    * Stop [[RpcEndpoint]] specified by `endpoint`.
    */
   def stop(endpoint: RpcEndpointRef): Unit
