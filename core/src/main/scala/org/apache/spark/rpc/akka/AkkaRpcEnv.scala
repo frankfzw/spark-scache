@@ -223,6 +223,10 @@ private[spark] class AkkaRpcEnv private[akka] (
       recover(defaultLookupTimeout.addMessageIfTimeout)
   }
 
+  def setupScacheEndpointRefByURI(uri: String): RpcEndpointRef = {
+    null
+  }
+
   override def uriOf(systemName: String, address: RpcAddress, endpointName: String): String = {
     AkkaUtils.address(
       AkkaUtils.protocol(actorSystem), systemName, address.host, address.port, endpointName)

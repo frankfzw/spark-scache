@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module org.jetbrains.idea.maven.project.MavenProjectsManager.isMavenModule="true" type="JAVA_MODULE" version="4">
-  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_7" inherit-compiler-output="false">
+  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_7">
     <output url="file://$MODULE_DIR$/target/scala-2.10/classes" />
     <output-test url="file://$MODULE_DIR$/target/scala-2.10/test-classes" />
     <content url="file://$MODULE_DIR$">
@@ -19,6 +19,7 @@
     <orderEntry type="library" name="Maven: org.apache.avro:avro-ipc:tests:1.7.7" level="project" />
     <orderEntry type="library" name="Maven: org.codehaus.jackson:jackson-core-asl:1.9.13" level="project" />
     <orderEntry type="library" name="Maven: org.codehaus.jackson:jackson-mapper-asl:1.9.13" level="project" />
+    <orderEntry type="library" name="Maven: org.scache:scache_2.10:0.1-SNAPSHOT" level="project" />
     <orderEntry type="library" name="Maven: com.twitter:chill_2.10:0.5.0" level="project" />
     <orderEntry type="library" name="Maven: com.esotericsoftware.kryo:kryo:2.21" level="project" />
     <orderEntry type="library" name="Maven: com.esotericsoftware.reflectasm:reflectasm:shaded:1.07" level="project" />

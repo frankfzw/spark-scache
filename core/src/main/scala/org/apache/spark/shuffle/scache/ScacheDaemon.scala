@@ -17,79 +17,66 @@
 
 package org.apache.spark.shuffle.scache
 
-import java.io.File
-import java.net.Inet4Address
-import java.nio.MappedByteBuffer
-import java.nio.channels.FileChannel
-import java.nio.file.StandardOpenOption
 
+import org.apache.spark.storage.{BlockId, ScacheBlockId, ShuffleBlockId}
 import org.apache.spark.{Logging, SparkConf}
-import org.apache.spark.rpc.{RpcAddress, RpcEndpointRef, RpcEnv}
-import org.apache.spark.shuffle.scache.DeployMessage.PutBlock
-import org.apache.spark.storage.ScacheBlockId
-import org.apache.spark.util.{ThreadUtils, Utils}
+import org.scache.deploy.Daemon
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.collection.mutable
 
 /**
   * Created by frankfzw on 17-3-14.
   */
-private[spark] class ScacheDaemon (
-    conf: SparkConf,
-    rpcEnv: RpcEnv) extends Logging {
+private[spark] class ScacheDaemon (conf: SparkConf) extends Logging {
 
-  private val asyncThreadPool =
-    ThreadUtils.newDaemonCachedThreadPool("scache-daemon-async-thread-pool")
-  private implicit val asyncExecutionContext = ExecutionContext.fromExecutorService(asyncThreadPool)
+  val scacheHome = conf.get("spark.scache.home", "~/SCache")
+  val platform = "spark"
 
-  val scacheHome = conf.get("scache.home", "/root/SCache")
-  val scachePort = conf.getInt("scache.client.port", 5678)
-  val scacheRpcAddr = new RpcAddress(Utils.localHostName(), scachePort)
-  val endpointRef = rpcEnv.setupEndpointRef("scache.client",
-    scacheRpcAddr, ScacheDaemon.ENDPOINT_NAME)
+  val daemon = new Daemon(scacheHome, platform)
 
   // test
-  // putBlock(0, 0, 0, 0, new Array[Byte](5), 5)
+  putBlock(0, ShuffleBlockId(0, 0, 0), Array[Byte](2), 2, 2)
 
-  def putBlock(jobId: Int, shuffleId: Int, mapId: Int, reduceId: Int,
-               data: Array[Byte], len: Int): Unit = {
-    val blockId = new ScacheBlockId("spark", jobId, shuffleId, mapId, reduceId)
-    doAsync[Boolean]("Put Block to Scache")(putBlockInternal(blockId, data, len))
+  def putBlock
+    (jobId: Int, blockId: BlockId, data: Array[Byte], rawLen: Int, compressedLen: Int): Boolean = {
+    if (!blockId.isShuffle) {
+      logError(s"Unexpected block type, excepted ${ShuffleBlockId.getClass.getSimpleName}" +
+        s"got ${blockId.getClass.getSimpleName}")
+      return false
+    }
+    val bId = blockId.asInstanceOf[ShuffleBlockId]
+    val scacheBlockId = ScacheBlockId("spark", jobId, bId.shuffleId, bId.mapId, bId.reduceId)
+    daemon.putBlock(scacheBlockId.toString, data, rawLen, compressedLen)
+    return true
   }
 
-  private def putBlockInternal(blockId: ScacheBlockId, data: Array[Byte], len: Int): Boolean = {
-    val path = scacheHome + "/tmp/" + blockId.toString()
-    val f = new File(path)
-    try {
-      val channel = FileChannel.open(f.toPath,
-        StandardOpenOption.READ, StandardOpenOption.CREATE, StandardOpenOption.WRITE)
-      val buf = channel.map(FileChannel.MapMode.READ_WRITE, 0, len)
-      buf.put(data)
-      endpointRef.askWithRetry[Boolean](new PutBlock(blockId, len))
+  def getBlock(jobId: Int, blockId: BlockId): Option[Array[Byte]] = {
+    if (!blockId.isShuffle) {
+      logError(s"Unexpected block type, excepted ${ShuffleBlockId.getClass.getSimpleName}" +
+        s"got ${blockId.getClass.getSimpleName}")
+      return None
     }
+    val bId = blockId.asInstanceOf[ShuffleBlockId]
+    val scacheBlockId = ScacheBlockId("spark", jobId, bId.shuffleId, bId.mapId, bId.reduceId)
+    daemon.getBlock(scacheBlockId.toString)
   }
 
-  private def doAsync[T](actionMessage: String)(body: => T) {
-    val future = Future {
-      logDebug(actionMessage)
-      body
-    }
-    future.onSuccess { case response =>
-      logDebug("Done " + actionMessage + ", response is " + response)
-    }
-    future.onFailure { case t: Throwable =>
-      logError("Error in " + actionMessage, t)
-    }
+  def registerShuffles
+    (jobId: Int, shuffleIds: Array[Int], maps: Array[Int], reduces: Array[Int]): Unit = {
+    daemon.registerShuffles(jobId, shuffleIds, maps, reduces)
   }
 
-  private def setupScacheClientRef(
-     systemName: String,
-     address: RpcAddress,
-     endpointName: String): RpcEndpointRef = {
-    val uri = rpcEnv.uriOf(systemName, address, endpointName)
-    val addr = RpcEndpointAddress(uri)
+  def getShuffleStatus(jobId: Int, shuffleId: Int): mutable.HashMap[Int, Array[String]] = {
+    daemon.getShuffleStatus(jobId, shuffleId)
   }
 
+  def mapEnd(jobId: Int, shuffleId: Int, mapId: Int): Unit = {
+    daemon.mapEnd(jobId, shuffleId, mapId)
+  }
+
+  def stop(): Unit = {
+    daemon.stop()
+  }
 }
 
 private[spark] object ScacheDaemon {

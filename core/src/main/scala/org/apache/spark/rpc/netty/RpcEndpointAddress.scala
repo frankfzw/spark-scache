@@ -19,6 +19,7 @@ package org.apache.spark.rpc.netty
 
 import org.apache.spark.SparkException
 import org.apache.spark.rpc.RpcAddress
+import org.apache.spark.shuffle.scache.ScacheDaemon
 
 /**
  * An address identifier for an RPC endpoint.
@@ -38,7 +39,11 @@ private[netty] case class RpcEndpointAddress(val rpcAddress: RpcAddress, val nam
   }
 
   override val toString = if (rpcAddress != null) {
-      s"spark://$name@${rpcAddress.host}:${rpcAddress.port}"
+      if (name == ScacheDaemon.ENDPOINT_NAME) {
+        s"scache://$name@${rpcAddress.host}:${rpcAddress.port}"
+      } else {
+        s"spark://$name@${rpcAddress.host}:${rpcAddress.port}"
+      }
     } else {
       s"spark-client://$name"
     }
@@ -52,6 +57,9 @@ private[netty] object RpcEndpointAddress {
       val host = uri.getHost
       val port = uri.getPort
       val name = uri.getUserInfo
+      if (uri.getScheme == "scache") {
+        return new RpcEndpointAddress(host, port, name)
+      }// frankfzw: it's a scache rpc
       if (uri.getScheme != "spark" ||
           host == null ||
           port < 0 ||

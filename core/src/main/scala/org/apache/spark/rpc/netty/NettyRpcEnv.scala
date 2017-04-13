@@ -150,6 +150,12 @@ private[netty] class NettyRpcEnv(
     }(ThreadUtils.sameThread)
   }
 
+  def setupScacheEndpointRefByURI(uri: String): RpcEndpointRef = {
+    val addr = RpcEndpointAddress(uri)
+    val endpointRef = new NettyRpcEndpointRef(conf, addr, this)
+    return endpointRef
+  }
+
   override def stop(endpointRef: RpcEndpointRef): Unit = {
     require(endpointRef.isInstanceOf[NettyRpcEndpointRef])
     dispatcher.stop(endpointRef)

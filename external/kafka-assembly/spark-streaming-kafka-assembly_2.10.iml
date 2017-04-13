@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module org.jetbrains.idea.maven.project.MavenProjectsManager.isMavenModule="true" type="JAVA_MODULE" version="4">
-  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_7" inherit-compiler-output="false">
+  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_7">
     <output url="file://$MODULE_DIR$/target/scala-2.10/classes" />
     <output-test url="file://$MODULE_DIR$/target/scala-2.10/test-classes" />
     <content url="file://$MODULE_DIR$">
@@ -15,6 +15,7 @@
     <orderEntry type="library" name="Maven: com.101tec:zkclient:0.3" level="project" />
     <orderEntry type="module" module-name="spark-streaming_2.10" scope="PROVIDED" />
     <orderEntry type="module" module-name="spark-core_2.10" scope="PROVIDED" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.scache:scache_2.10:0.1-SNAPSHOT" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.twitter:chill_2.10:0.5.0" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.esotericsoftware.kryo:kryo:2.21" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.esotericsoftware.reflectasm:reflectasm:shaded:1.07" level="project" />
@@ -50,7 +51,7 @@
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.slf4j:jcl-over-slf4j:1.7.10" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.ning:compress-lzf:1.0.3" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.roaringbitmap:RoaringBitmap:0.5.11" level="project" />
-    <orderEntry type="library" name="Maven: commons-net:commons-net:2.2" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-net:commons-net:2.2" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.typesafe.akka:akka-remote_2.10:2.3.11" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.typesafe.akka:akka-actor_2.10:2.3.11" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.typesafe:config:1.2.1" level="project" />
@@ -85,28 +86,28 @@
     <orderEntry type="library" scope="PROVIDED" name="Maven: commons-lang:commons-lang:2.6" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.protobuf:protobuf-java:2.5.0" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.sun.jersey:jersey-server:1.9" level="project" />
-    <orderEntry type="library" name="Maven: asm:asm:3.1" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: asm:asm:3.1" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.sun.jersey:jersey-core:1.9" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: net.jpountz.lz4:lz4:1.3.0" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.hadoop:hadoop-client:2.2.0" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-common:2.2.0" level="project" />
-    <orderEntry type="library" name="Maven: commons-cli:commons-cli:1.2" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.commons:commons-math:2.1" level="project" />
-    <orderEntry type="library" name="Maven: xmlenc:xmlenc:0.52" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.hadoop:hadoop-common:2.2.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-cli:commons-cli:1.2" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.commons:commons-math:2.1" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: xmlenc:xmlenc:0.52" level="project" />
     <orderEntry type="library" name="Maven: commons-io:commons-io:2.1" level="project" />
-    <orderEntry type="library" name="Maven: commons-configuration:commons-configuration:1.6" level="project" />
-    <orderEntry type="library" name="Maven: commons-collections:commons-collections:3.2.2" level="project" />
-    <orderEntry type="library" name="Maven: commons-digester:commons-digester:1.8" level="project" />
-    <orderEntry type="library" name="Maven: commons-beanutils:commons-beanutils:1.7.0" level="project" />
-    <orderEntry type="library" name="Maven: commons-beanutils:commons-beanutils-core:1.8.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-configuration:commons-configuration:1.6" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-collections:commons-collections:3.2.2" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-digester:commons-digester:1.8" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-beanutils:commons-beanutils:1.7.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-beanutils:commons-beanutils-core:1.8.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.avro:avro:1.7.7" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-auth:2.2.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.hadoop:hadoop-auth:2.2.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.commons:commons-compress:1.4.1" level="project" />
     <orderEntry type="library" name="Maven: org.tukaani:xz:1.0" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-hdfs:2.2.0" level="project" />
-    <orderEntry type="library" name="Maven: org.mortbay.jetty:jetty-util:6.1.26" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-mapreduce-client-app:2.2.0" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-mapreduce-client-common:2.2.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.hadoop:hadoop-hdfs:2.2.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.mortbay.jetty:jetty-util:6.1.26" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.hadoop:hadoop-mapreduce-client-app:2.2.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.hadoop:hadoop-mapreduce-client-common:2.2.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-yarn-client:2.2.0" level="project" />
     <orderEntry type="library" name="Maven: com.google.inject:guice:3.0" level="project" />
     <orderEntry type="library" name="Maven: javax.inject:javax.inject:1" level="project" />
@@ -132,27 +133,27 @@
     <orderEntry type="library" name="Maven: org.codehaus.jackson:jackson-jaxrs:1.9.13" level="project" />
     <orderEntry type="library" name="Maven: org.codehaus.jackson:jackson-xc:1.9.13" level="project" />
     <orderEntry type="library" name="Maven: com.sun.jersey.contribs:jersey-guice:1.9" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-yarn-server-common:2.2.0" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-mapreduce-client-shuffle:2.2.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.hadoop:hadoop-yarn-server-common:2.2.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.hadoop:hadoop-mapreduce-client-shuffle:2.2.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-yarn-api:2.2.0" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-mapreduce-client-core:2.2.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.hadoop:hadoop-mapreduce-client-core:2.2.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-yarn-common:2.2.0" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-mapreduce-client-jobclient:2.2.0" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.hadoop:hadoop-annotations:2.2.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.hadoop:hadoop-mapreduce-client-jobclient:2.2.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.hadoop:hadoop-annotations:2.2.0" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.avro:avro-mapred:hadoop2:1.7.7" level="project" />
     <orderEntry type="library" name="Maven: org.apache.avro:avro-ipc:1.7.7" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.avro:avro-ipc:tests:1.7.7" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.avro:avro-ipc:tests:1.7.7" level="project" />
     <orderEntry type="library" name="Maven: org.codehaus.jackson:jackson-core-asl:1.9.13" level="project" />
     <orderEntry type="library" name="Maven: org.codehaus.jackson:jackson-mapper-asl:1.9.13" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.curator:curator-recipes:2.4.0" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.curator:curator-framework:2.4.0" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.curator:curator-client:2.4.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.curator:curator-framework:2.4.0" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.curator:curator-client:2.4.0" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: com.google.guava:guava:14.0.1" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.apache.zookeeper:zookeeper:3.4.5" level="project" />
-    <orderEntry type="library" name="Maven: jline:jline:0.9.94" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: jline:jline:0.9.94" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: log4j:log4j:1.2.17" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: net.java.dev.jets3t:jets3t:0.7.1" level="project" />
-    <orderEntry type="library" name="Maven: commons-httpclient:commons-httpclient:3.1" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Maven: commons-httpclient:commons-httpclient:3.1" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.scala-lang:scala-library:2.10.5" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.slf4j:slf4j-api:1.7.10" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.slf4j:slf4j-log4j12:1.7.10" level="project" />

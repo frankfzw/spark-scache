@@ -91,6 +91,11 @@ private[spark] abstract class RpcEnv(conf: SparkConf) {
   def asyncSetupEndpointRefByURI(uri: String): Future[RpcEndpointRef]
 
   /**
+   * Retrieve the [[RpcEndpointRef]] represented by `uri` asynchronously.
+   */
+  def setupScacheEndpointRefByURI(uri: String): RpcEndpointRef
+
+  /**
    * Retrieve the [[RpcEndpointRef]] represented by `uri`. This is a blocking action.
    */
   def setupEndpointRefByURI(uri: String): RpcEndpointRef = {
@@ -113,6 +118,7 @@ private[spark] abstract class RpcEnv(conf: SparkConf) {
   def setupScacheEndpointRef(
       systemName: String, address: RpcAddress, endpointName: String): RpcEndpointRef = {
     val uri = uriOf(systemName, address, endpointName)
+    setupScacheEndpointRefByURI(uri)
   }
   /**
    * Stop [[RpcEndpoint]] specified by `endpoint`.

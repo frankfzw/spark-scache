@@ -97,6 +97,9 @@ class SparkEnv (
       blockManager.master.stop()
       metricsSystem.stop()
       outputCommitCoordinator.stop()
+      if (scacheDaemon != null) {
+        scacheDaemon.stop()
+      }
       if (!rpcEnv.isInstanceOf[AkkaRpcEnv]) {
         actorSystem.shutdown()
       }
@@ -402,7 +405,10 @@ object SparkEnv extends Logging {
     outputCommitCoordinator.coordinatorRef = Some(outputCommitCoordinatorRef)
 
     // frankfzw: Init ScacheDaemon if necessary
-    val scacheDaemon = new ScacheDaemon(conf, rpcEnv)
+    var scacheDaemon: ScacheDaemon = null
+    if (conf.getBoolean("spark.scache.enable", false)) {
+      scacheDaemon = new ScacheDaemon(conf)
+    }
 
     val envInstance = new SparkEnv(
       executorId,
