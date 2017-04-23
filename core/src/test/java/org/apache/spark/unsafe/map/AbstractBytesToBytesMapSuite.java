@@ -111,7 +111,7 @@ public abstract class AbstractBytesToBytesMapSuite {
       public DiskBlockObjectWriter answer(InvocationOnMock invocationOnMock) throws Throwable {
         Object[] args = invocationOnMock.getArguments();
 
-        return new DiskBlockObjectWriter(
+        return new DiskBlockObjectWriterImpl(
           (File) args[1],
           (SerializerInstance) args[2],
           (Integer) args[3],

@@ -67,11 +67,14 @@ private[spark] class ShuffleMapTask(
 
     metrics = Some(context.taskMetrics)
     var writer: ShuffleWriter[Any, Any] = null
+    // frankfzw: set job id of scache
+    SparkEnv.get.scacheDaemon.setRunningJId(getJobId)
     try {
       val manager = SparkEnv.get.shuffleManager
       writer = manager.getWriter[Any, Any](dep.shuffleHandle, partitionId, context)
       writer.write(rdd.iterator(partition, context).asInstanceOf[Iterator[_ <: Product2[Any, Any]]])
-      logInfo(s"frankfzw: ShuffleMapTask ${toString} finished, writer ${writer.getClass.getName}")
+      logInfo(s"frankfzw: Job ${getJobId} ShuffleMapTask ${toString} finished," +
+        s" writer ${writer.getClass.getName}")
       writer.stop(success = true).get
     } catch {
       case e: Exception =>

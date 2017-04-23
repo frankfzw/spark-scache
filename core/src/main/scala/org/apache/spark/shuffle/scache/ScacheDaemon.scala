@@ -19,7 +19,7 @@ package org.apache.spark.shuffle.scache
 
 
 import org.apache.spark.storage.{BlockId, ScacheBlockId, ShuffleBlockId}
-import org.apache.spark.{Logging, SparkConf}
+import org.apache.spark.{Logging, ShuffleDependency, SparkConf}
 import org.scache.deploy.Daemon
 
 import scala.collection.mutable
@@ -34,36 +34,52 @@ private[spark] class ScacheDaemon (conf: SparkConf) extends Logging {
 
   val daemon = new Daemon(scacheHome, platform)
 
+  private var runningJId: Int = 0
+
+  def setRunningJId(jid: Int): Unit = {
+    runningJId = jid
+  }
+
+  def getRunningJId: Int = runningJId
+
   // test
-  putBlock(0, ShuffleBlockId(0, 0, 0), Array[Byte](2), 2, 2)
+  // putBlock(0, ShuffleBlockId(0, 0, 0), Array[Byte](2), 2, 2)
 
   def putBlock
-    (jobId: Int, blockId: BlockId, data: Array[Byte], rawLen: Int, compressedLen: Int): Boolean = {
+    (blockId: BlockId, data: Array[Byte], rawLen: Int, compressedLen: Int): Boolean = {
     if (!blockId.isShuffle) {
       logError(s"Unexpected block type, excepted ${ShuffleBlockId.getClass.getSimpleName}" +
         s"got ${blockId.getClass.getSimpleName}")
       return false
     }
     val bId = blockId.asInstanceOf[ShuffleBlockId]
-    val scacheBlockId = ScacheBlockId("spark", jobId, bId.shuffleId, bId.mapId, bId.reduceId)
+    val scacheBlockId = ScacheBlockId("spark", runningJId, bId.shuffleId, bId.mapId, bId.reduceId)
     daemon.putBlock(scacheBlockId.toString, data, rawLen, compressedLen)
     return true
   }
 
-  def getBlock(jobId: Int, blockId: BlockId): Option[Array[Byte]] = {
+  def getBlock(blockId: BlockId): Option[Array[Byte]] = {
     if (!blockId.isShuffle) {
       logError(s"Unexpected block type, excepted ${ShuffleBlockId.getClass.getSimpleName}" +
         s"got ${blockId.getClass.getSimpleName}")
       return None
     }
     val bId = blockId.asInstanceOf[ShuffleBlockId]
-    val scacheBlockId = ScacheBlockId("spark", jobId, bId.shuffleId, bId.mapId, bId.reduceId)
+    val scacheBlockId = ScacheBlockId("spark", runningJId, bId.shuffleId, bId.mapId, bId.reduceId)
     daemon.getBlock(scacheBlockId.toString)
   }
 
   def registerShuffles
     (jobId: Int, shuffleIds: Array[Int], maps: Array[Int], reduces: Array[Int]): Unit = {
     daemon.registerShuffles(jobId, shuffleIds, maps, reduces)
+  }
+
+  def registerShuffles
+    (jobId: Int, shuffleDeps: Array[ShuffleDependency[_, _, _]], reduces: Int): Unit = {
+    val shuffleIds = shuffleDeps.map(x => x.shuffleId)
+    val maps = shuffleDeps.map(x => x.rdd.partitions.length)
+    val reducesArr = Array(maps.length).map(x => reduces)
+    daemon.registerShuffles(jobId, shuffleIds, maps, reducesArr)
   }
 
   def getShuffleStatus(jobId: Int, shuffleId: Int): mutable.HashMap[Int, Array[String]] = {

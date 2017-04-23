@@ -23,14 +23,12 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.Map
-import scala.collection.mutable.{HashMap, HashSet, Stack}
+import scala.collection.mutable.{ArrayBuffer, HashMap, HashSet, Stack}
 import scala.concurrent.duration._
 import scala.language.existentials
 import scala.language.postfixOps
 import scala.util.control.NonFatal
-
 import org.apache.commons.lang3.SerializationUtils
-
 import org.apache.spark._
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.executor.TaskMetrics
@@ -282,7 +280,7 @@ class DAGScheduler(
       case Some(stage) => stage
       case None =>
         // We are going to register ancestor shuffle dependencies
-        getAncestorShuffleDependencies(shuffleDep.rdd).foreach { dep =>
+        getAncestorShuffleDependencies(shuffleDep.rdd, firstJobId).foreach { dep =>
           shuffleToMapStage(dep.shuffleId) = newOrUsedShuffleStage(dep, firstJobId)
         }
         // Then register current shuffleDep
@@ -383,13 +381,20 @@ class DAGScheduler(
         visited += r
         // Kind of ugly: need to register RDDs with the cache here since
         // we can't do it in its constructor because # of partitions is unknown
+        // frankfzw: register shuffles
+        val shuffles = new ArrayBuffer[ShuffleDependency[_, _, _]]
         for (dep <- r.dependencies) {
           dep match {
             case shufDep: ShuffleDependency[_, _, _] =>
               parents += getShuffleMapStage(shufDep, firstJobId)
+              shuffles.append(shufDep)
             case _ =>
               waitingForVisit.push(dep.rdd)
           }
+        }
+        if (!shuffles.isEmpty && sc.getConf.getBoolean("spark.scache.enable", false)) {
+          logDebug(s"frankfzw: Register ${shuffles.length} shuffles for RDD ${rdd.id}")
+          env.scacheDaemon.registerShuffles(firstJobId, shuffles.toArray, rdd.partitions.length)
         }
       }
     }
@@ -401,7 +406,8 @@ class DAGScheduler(
   }
 
   /** Find ancestor shuffle dependencies that are not registered in shuffleToMapStage yet */
-  private def getAncestorShuffleDependencies(rdd: RDD[_]): Stack[ShuffleDependency[_, _, _]] = {
+  private def getAncestorShuffleDependencies(
+     rdd: RDD[_], firstJobId: Int): Stack[ShuffleDependency[_, _, _]] = {
     val parents = new Stack[ShuffleDependency[_, _, _]]
     val visited = new HashSet[RDD[_]]
     // We are manually maintaining a stack here to prevent StackOverflowError
@@ -419,10 +425,10 @@ class DAGScheduler(
             case _ =>
           }
           waitingForVisit.push(dep.rdd)
+
         }
       }
     }
-
     waitingForVisit.push(rdd)
     while (waitingForVisit.nonEmpty) {
       visit(waitingForVisit.pop())
@@ -1046,6 +1052,11 @@ class DAGScheduler(
     }
 
     if (tasks.size > 0) {
+      if (sc.getConf.getBoolean("spark.scache.enable", false)) {
+        for (t <- tasks) {
+          t.setJobId(jobId)
+        }
+      }
       logInfo("Submitting " + tasks.size + " missing tasks from " + stage + " (" + stage.rdd + ")")
       stage.pendingPartitions ++= tasks.map(_.partitionId)
       logDebug("New pending partitions: " + stage.pendingPartitions)

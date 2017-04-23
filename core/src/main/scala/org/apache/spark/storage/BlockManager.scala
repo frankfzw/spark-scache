@@ -27,9 +27,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Random
 import scala.util.control.NonFatal
 import scala.collection.JavaConverters._
-
 import sun.nio.ch.DirectBuffer
-
 import org.apache.spark._
 import org.apache.spark.executor.{DataReadMethod, ShuffleWriteMetrics}
 import org.apache.spark.io.CompressionCodec
@@ -42,6 +40,7 @@ import org.apache.spark.network.shuffle.protocol.ExecutorShuffleInfo
 import org.apache.spark.rpc.RpcEnv
 import org.apache.spark.serializer.{Serializer, SerializerInstance}
 import org.apache.spark.shuffle.ShuffleManager
+import org.apache.spark.shuffle.scache.{ScacheBlockObjectWriter, ScacheDaemon}
 import org.apache.spark.util._
 
 private[spark] sealed trait BlockValues
@@ -74,6 +73,7 @@ private[spark] class BlockManager(
     securityManager: SecurityManager,
     numUsableCores: Int)
   extends BlockDataManager with Logging {
+
 
   val diskBlockManager = new DiskBlockManager(this, conf)
 
@@ -171,6 +171,11 @@ private[spark] class BlockManager(
 
   private val NON_TASK_WRITER = -1024L
 
+  private var scacheDaemon: ScacheDaemon = null
+
+  def setScacheDaemon(daemon: ScacheDaemon): Unit = {
+    scacheDaemon = daemon
+  }
   /**
    * Initializes the BlockManager with the given appId. This is not performed in the constructor as
    * the appId may not be known at BlockManager instantiation time (in particular for the driver,
@@ -668,8 +673,16 @@ private[spark] class BlockManager(
       writeMetrics: ShuffleWriteMetrics): DiskBlockObjectWriter = {
     val compressStream: OutputStream => OutputStream = wrapForCompression(blockId, _)
     val syncWrites = conf.getBoolean("spark.shuffle.sync", false)
-    new DiskBlockObjectWriter(file, serializerInstance, bufferSize, compressStream,
-      syncWrites, writeMetrics, blockId)
+    if (conf.getBoolean("spark.scache.enalbe", false)) {
+      if (scacheDaemon == null) {
+        throw new SparkException("Scache daemon not initialized")
+      }
+      new ScacheBlockObjectWriter(serializerInstance, bufferSize, compressStream,
+        syncWrites, writeMetrics, blockId, scacheDaemon)
+    } else {
+      new DiskBlockObjectWriterImpl(file, serializerInstance, bufferSize, compressStream,
+        syncWrites, writeMetrics, blockId)
+    }
   }
 
   /**

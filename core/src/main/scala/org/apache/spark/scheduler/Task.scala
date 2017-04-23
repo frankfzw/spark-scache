@@ -51,6 +51,11 @@ private[spark] abstract class Task[T](
     val partitionId: Int,
     internalAccumulators: Seq[Accumulator[Long]]) extends Serializable {
 
+  private var jobId: Int = -1
+  def setJobId(jid: Int): Unit = {
+    jobId = jid
+  }
+  def getJobId: Int = jobId
   /**
    * The key of the Map is the accumulator id and the value of the Map is the latest accumulator
    * local value.

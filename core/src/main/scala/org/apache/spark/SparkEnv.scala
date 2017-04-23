@@ -408,6 +408,7 @@ object SparkEnv extends Logging {
     var scacheDaemon: ScacheDaemon = null
     if (conf.getBoolean("spark.scache.enable", false)) {
       scacheDaemon = new ScacheDaemon(conf)
+      blockManager.setScacheDaemon(scacheDaemon)
     }
 
     val envInstance = new SparkEnv(
