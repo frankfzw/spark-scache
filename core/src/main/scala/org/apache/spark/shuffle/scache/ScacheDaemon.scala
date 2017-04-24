@@ -34,9 +34,10 @@ private[spark] class ScacheDaemon (conf: SparkConf) extends Logging {
 
   val daemon = new Daemon(scacheHome, platform)
 
-  private var runningJId: Int = 0
+  private var runningJId: Int = -1
 
   def setRunningJId(jid: Int): Unit = {
+    logDebug(s"Update jid from $runningJId to $jid")
     runningJId = jid
   }
 
