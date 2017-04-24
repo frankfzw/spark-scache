@@ -22,7 +22,7 @@ import java.util.Properties
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
-import scala.collection.Map
+import scala.collection.{Map, mutable}
 import scala.collection.mutable.{ArrayBuffer, HashMap, HashSet, Stack}
 import scala.concurrent.duration._
 import scala.language.existentials
@@ -841,6 +841,10 @@ class DAGScheduler(
       // New stage creation may throw an exception if, for example, jobs are run on a
       // HadoopRDD whose underlying HDFS files have been deleted.
       finalStage = newResultStage(finalRDD, func, partitions, jobId, callSite)
+      // frankfzw: set job id of scache
+      if (sc.conf.getBoolean("spark.scache.enable", false)) {
+        sc.env.scacheDaemon.setRunningJId(jobId)
+      }
     } catch {
       case e: Exception =>
         logWarning("Creating new stage failed due to exception - job: " + jobId, e)
@@ -977,7 +981,11 @@ class DAGScheduler(
           val job = s.activeJob.get
           partitionsToCompute.map { id =>
             val p = s.partitions(id)
-            (id, getPreferredLocs(stage.rdd, p))
+            val res = (id, getPreferredLocs(stage.rdd, p))
+            if (res._2.nonEmpty) {
+              logDebug(s"frankfzw: Get preferred location for ${id}: ${res._2(0).toString}")
+            }
+            res
           }.toMap
       }
     } catch {
@@ -1569,7 +1577,14 @@ class DAGScheduler(
             return locs
           }
         }
-
+      case s: ShuffleDependency[_, _, _] =>
+        if (sc.conf.getBoolean("spark.scache.enable", false)) {
+          // frankfzw: ask SCache to get preferred location
+          val locs = sc.env.scacheDaemon.getShuffleStatusForPartition(s.shuffleId, partition)
+          if (locs.nonEmpty) {
+            return locs.map(TaskLocation(_))
+          }
+        }
       case _ =>
     }
 

@@ -18,6 +18,8 @@
 package org.apache.spark.shuffle.scache
 
 
+import java.util.concurrent.ConcurrentHashMap
+
 import org.apache.spark.storage.{BlockId, ScacheBlockId, ShuffleBlockId}
 import org.apache.spark.{Logging, ShuffleDependency, SparkConf}
 import org.scache.deploy.Daemon
@@ -33,6 +35,8 @@ private[spark] class ScacheDaemon (conf: SparkConf) extends Logging {
   val platform = "spark"
 
   val daemon = new Daemon(scacheHome, platform)
+
+  val reduceStatus = new ConcurrentHashMap[(Int, Int), mutable.HashMap[Int, Array[String]]]()
 
   private var runningJId: Int = -1
 
@@ -84,11 +88,35 @@ private[spark] class ScacheDaemon (conf: SparkConf) extends Logging {
   }
 
   def getShuffleStatus(jobId: Int, shuffleId: Int): mutable.HashMap[Int, Array[String]] = {
-    daemon.getShuffleStatus(jobId, shuffleId)
+    getShuffleStatusInternal(jobId, shuffleId)
+  }
+
+  def getShuffleStatus(shuffleId: Int): mutable.HashMap[Int, Array[String]] = {
+    getShuffleStatusInternal(runningJId, shuffleId)
+  }
+
+  def getShuffleStatusForPartition(shuffleId: Int, reduceId: Int): Array[String] = {
+    getShuffleStatusInternal(runningJId, shuffleId).get(reduceId).getOrElse(new Array[String](0))
+  }
+
+  private def getShuffleStatusInternal
+    (jobId: Int, shuffleId: Int): mutable.HashMap[Int, Array[String]] = {
+    val key = (jobId, shuffleId)
+    if (reduceStatus.contains(key)) {
+      return reduceStatus.get(key)
+    } else {
+      val res = daemon.getShuffleStatus(jobId, shuffleId)
+      reduceStatus.putIfAbsent(key, res)
+      return res
+    }
   }
 
   def mapEnd(jobId: Int, shuffleId: Int, mapId: Int): Unit = {
     daemon.mapEnd(jobId, shuffleId, mapId)
+  }
+
+  def mapEnd(shuffleId: Int, mapId: Int): Unit = {
+    daemon.mapEnd(runningJId, shuffleId, mapId)
   }
 
   def stop(): Unit = {
