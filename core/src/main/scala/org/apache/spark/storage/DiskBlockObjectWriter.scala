@@ -55,6 +55,7 @@ private[spark] abstract class DiskBlockObjectWriter(
   override def write(kvBytes: Array[Byte], offs: Int, len: Int): Unit
   def recordWritten(): Unit
   def fileSegment(): FileSegment
+  def getSize(): Long
 }
 
 

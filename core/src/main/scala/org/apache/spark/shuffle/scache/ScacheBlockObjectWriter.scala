@@ -63,6 +63,7 @@ class ScacheBlockObjectWriter (
     ts = new TimeTrackingOutputStream(writeMetrics, bos)
     bs = compressStream(new BufferedOutputStream(ts, bufferSize))
     objOut = serializerInstance.serializeStream(bs)
+    finalPosition = initialPosition
     initialized = true
     this
   }
@@ -79,7 +80,9 @@ class ScacheBlockObjectWriter (
       } {
         objOut.close()
       }
-      daemon.putBlock(blockId, bos.getBytes, bos.size(), bos.size())
+      if (bos.size() > 0) {
+        daemon.putBlock(blockId, bos.getBytes, bos.size(), bos.size())
+      }
 
       bs = null
       bos = null
@@ -92,16 +95,24 @@ class ScacheBlockObjectWriter (
 
   override def isOpen(): Boolean = objOut != null
 
+  override def getSize(): Long = {
+    if (bos == null) {
+      finalPosition
+    } else {
+      bos.size().toLong
+    }
+  }
+
   override def commitAndClose(): Unit = {
     if (initialized) {
+      finalPosition = bos.size()
       objOut.flush()
       bs.flush()
       close()
-      finalPosition = bos.size()
       // In certain compression codecs, more bytes are written after close() is called
       writeMetrics.incShuffleBytesWritten(finalPosition - reportedPosition)
     } else {
-      finalPosition = bos.size()
+      finalPosition = 0
     }
     commitAndCloseHasBeenCalled = true
   }
@@ -115,12 +126,12 @@ class ScacheBlockObjectWriter (
         bs.flush()
         close()
       }
-      null
+      new File("/tmp/fake")
 
     } catch {
       case e: Exception =>
         logError("Uncaught exception while reverting partial writes ", e)
-        null
+        new File("/tmp/fake")
     }
   }
 

@@ -673,7 +673,7 @@ private[spark] class BlockManager(
       writeMetrics: ShuffleWriteMetrics): DiskBlockObjectWriter = {
     val compressStream: OutputStream => OutputStream = wrapForCompression(blockId, _)
     val syncWrites = conf.getBoolean("spark.shuffle.sync", false)
-    if (conf.getBoolean("spark.scache.enalbe", false)) {
+    if (conf.getBoolean("spark.scache.enable", false)) {
       if (scacheDaemon == null) {
         throw new SparkException("Scache daemon not initialized")
       }

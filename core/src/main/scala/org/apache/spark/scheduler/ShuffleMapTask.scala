@@ -68,7 +68,9 @@ private[spark] class ShuffleMapTask(
     metrics = Some(context.taskMetrics)
     var writer: ShuffleWriter[Any, Any] = null
     // frankfzw: set job id of scache
-    SparkEnv.get.scacheDaemon.setRunningJId(getJobId)
+    if (SparkEnv.get.conf.getBoolean("spark.scache.enable", false)) {
+      SparkEnv.get.scacheDaemon.setRunningJId(getJobId)
+    }
     try {
       val manager = SparkEnv.get.shuffleManager
       writer = manager.getWriter[Any, Any](dep.shuffleHandle, partitionId, context)

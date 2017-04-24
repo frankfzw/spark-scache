@@ -205,6 +205,10 @@ private[spark] class DiskBlockObjectWriterImpl(
     }
   }
 
+  override def getSize(): Long = {
+    (file.length() - initialPosition)
+  }
+
   /**
    * Returns the file segment of committed data that this Writer has written.
    * This is only valid after commitAndClose() has been called.

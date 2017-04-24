@@ -129,16 +129,34 @@ final class BypassMergeSortShuffleWriter<K, V> extends ShuffleWriter<K, V> {
       mapStatus = MapStatus$.MODULE$.apply(blockManager.shuffleServerId(), partitionLengths);
       return;
     }
+    // frankfzw: add a flag to check writer
+    boolean scacheFlag = false;
     final SerializerInstance serInstance = serializer.newInstance();
     final long openStartTime = System.nanoTime();
     partitionWriters = new DiskBlockObjectWriter[numPartitions];
-    for (int i = 0; i < numPartitions; i++) {
-      final Tuple2<TempShuffleBlockId, File> tempShuffleBlockIdPlusFile =
-        blockManager.diskBlockManager().createTempShuffleBlock();
-      final File file = tempShuffleBlockIdPlusFile._2();
-      final BlockId blockId = tempShuffleBlockIdPlusFile._1();
-      partitionWriters[i] =
-        blockManager.getDiskWriter(blockId, file, serInstance, fileBufferSize, writeMetrics).open();
+    partitionWriters[0] =
+      blockManager.getDiskWriter(new ShuffleBlockId(shuffleId, mapId, 0), new File("/tmp/fake"),
+        serInstance, fileBufferSize, writeMetrics).open();
+    // frankfzw: do the test of type of block writer
+    if (partitionWriters[0].getClass().getSimpleName().contains("Scache")) {
+      logger.debug("frankfzw: Use ScacheBlockObjectWriter");
+      scacheFlag = true;
+      for (int i = 1; i < numPartitions; i++) {
+        final BlockId blockId = new ShuffleBlockId(shuffleId, mapId, i);
+        File f = new File("/tmp/fake");
+        partitionWriters[i] =
+          blockManager.getDiskWriter(blockId, f, serInstance, fileBufferSize, writeMetrics).open();
+      }
+    } else {
+      partitionWriters[0].close();
+      for (int i = 0; i < numPartitions; i++) {
+        final Tuple2<TempShuffleBlockId, File> tempShuffleBlockIdPlusFile =
+          blockManager.diskBlockManager().createTempShuffleBlock();
+        final File file = tempShuffleBlockIdPlusFile._2();
+        final BlockId blockId = tempShuffleBlockIdPlusFile._1();
+        partitionWriters[i] =
+          blockManager.getDiskWriter(blockId, file, serInstance, fileBufferSize, writeMetrics).open();
+      }
     }
     // Creating the file to write to and creating a disk writer both involve interacting with
     // the disk, and can take a long time in aggregate when we open many files, so should be
@@ -151,15 +169,28 @@ final class BypassMergeSortShuffleWriter<K, V> extends ShuffleWriter<K, V> {
       partitionWriters[partitioner.getPartition(key)].write(key, record._2());
     }
 
-    for (DiskBlockObjectWriter writer : partitionWriters) {
-      writer.commitAndClose();
+    partitionLengths = new long[numPartitions];
+    if (scacheFlag) {
+      for (int i = 0; i < numPartitions; i++) {
+        partitionLengths[i] = partitionWriters[i].getSize();
+        partitionWriters[i].commitAndClose();
+      }
+      File output = shuffleBlockResolver.getDataFile(shuffleId, mapId);
+      File tmp = Utils.tempFileWith(output);
+      shuffleBlockResolver.writeIndexFileAndCommit(shuffleId, mapId, partitionLengths, tmp);
+      mapStatus = MapStatus$.MODULE$.apply(blockManager.shuffleServerId(), partitionLengths);
+    } else {
+     for (DiskBlockObjectWriter writer : partitionWriters) {
+        writer.commitAndClose();
+      }
+
+      File output = shuffleBlockResolver.getDataFile(shuffleId, mapId);
+      File tmp = Utils.tempFileWith(output);
+      partitionLengths = writePartitionedFile(tmp);
+      shuffleBlockResolver.writeIndexFileAndCommit(shuffleId, mapId, partitionLengths, tmp);
+      mapStatus = MapStatus$.MODULE$.apply(blockManager.shuffleServerId(), partitionLengths);
     }
 
-    File output = shuffleBlockResolver.getDataFile(shuffleId, mapId);
-    File tmp = Utils.tempFileWith(output);
-    partitionLengths = writePartitionedFile(tmp);
-    shuffleBlockResolver.writeIndexFileAndCommit(shuffleId, mapId, partitionLengths, tmp);
-    mapStatus = MapStatus$.MODULE$.apply(blockManager.shuffleServerId(), partitionLengths);
   }
 
   @VisibleForTesting
