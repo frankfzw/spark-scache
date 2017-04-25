@@ -896,7 +896,14 @@ private[spark] class TaskSetManager(
         pendingTasksForRack.keySet.exists(sched.hasHostAliveOnRack(_))) {
       levels += RACK_LOCAL
     }
-    levels += ANY
+    // frankfzw: skip any for reduce tasks
+    if (taskSet.tasks(0).isInstanceOf[ShuffleMapTask] ||
+        !conf.getBoolean("spark.scache.enable", false)) {
+      levels += ANY
+    }
+    // logDebug(s"frankfzw: pending: ${pendingTasksForHost.isEmpty}; " +
+    //   s"locality wait: ${getLocalityWait(NODE_LOCAL)}; " +
+    //   s"host: ${pendingTasksForHost.keySet.exists(sched.hasExecutorsAliveOnHost(_))}")
     logDebug("Valid locality levels for " + taskSet + ": " + levels.mkString(", "))
     levels.toArray
   }

@@ -18,6 +18,9 @@
 package org.apache.spark.shuffle.scache
 
 
+import java.net.InetAddress
+
+import com.google.common.net.InetAddresses
 import java.util.concurrent.ConcurrentHashMap
 
 import org.apache.spark.storage.{BlockId, ScacheBlockId, ShuffleBlockId}
@@ -106,7 +109,18 @@ private[spark] class ScacheDaemon (conf: SparkConf) extends Logging {
       return reduceStatus.get(key)
     } else {
       val res = daemon.getShuffleStatus(jobId, shuffleId)
-      reduceStatus.putIfAbsent(key, res)
+      val str = res.values.head(0)
+      if (InetAddresses.isInetAddress(str)) {
+        val newAddr = new mutable.HashMap[Int, Array[String]]
+        for ((k, v) <- res) {
+          val addr = v.map(x => InetAddress.getByName(x).getHostName)
+          newAddr.put(k, addr)
+        }
+        reduceStatus.putIfAbsent(key, newAddr)
+        return newAddr
+      } else {
+        reduceStatus.putIfAbsent(key, res)
+      }
       return res
     }
   }

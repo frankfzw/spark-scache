@@ -546,6 +546,7 @@ private[spark] class TaskSchedulerImpl(
   }
 
   def hasExecutorsAliveOnHost(host: String): Boolean = synchronized {
+    // logDebug(s"frankfzw: ${executorsByHost.keySet.mkString(", ")}")
     executorsByHost.contains(host)
   }
 

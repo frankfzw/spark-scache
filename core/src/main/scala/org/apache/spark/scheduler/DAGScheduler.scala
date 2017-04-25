@@ -982,9 +982,6 @@ class DAGScheduler(
           partitionsToCompute.map { id =>
             val p = s.partitions(id)
             val res = (id, getPreferredLocs(stage.rdd, p))
-            if (res._2.nonEmpty) {
-              logDebug(s"frankfzw: Get preferred location for ${id}: ${res._2(0).toString}")
-            }
             res
           }.toMap
       }
