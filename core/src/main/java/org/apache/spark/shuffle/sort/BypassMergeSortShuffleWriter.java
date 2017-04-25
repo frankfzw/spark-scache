@@ -172,8 +172,11 @@ final class BypassMergeSortShuffleWriter<K, V> extends ShuffleWriter<K, V> {
     partitionLengths = new long[numPartitions];
     if (scacheFlag) {
       for (int i = 0; i < numPartitions; i++) {
-        partitionLengths[i] = partitionWriters[i].getSize();
         partitionWriters[i].commitAndClose();
+        partitionLengths[i] = partitionWriters[i].getSize();
+        logger.info("frankfzw: shuffleid " + this.shuffleId + " mapid " + this.mapId +
+          " reduceid " + i + " size " + partitionLengths[i] +
+          " partitioner " + partitioner.getClass().getName());
       }
       File output = shuffleBlockResolver.getDataFile(shuffleId, mapId);
       File tmp = Utils.tempFileWith(output);

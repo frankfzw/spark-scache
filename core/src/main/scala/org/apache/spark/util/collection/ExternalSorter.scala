@@ -657,13 +657,13 @@ private[spark] class ExternalSorter[K, V, C](
           it.writeNext(writer)
         }
         writer.commitAndClose()
-        val segment = writer.fileSegment()
-        lengths(partitionId) = segment.length
+        // val segment = writer.fileSegment()
+        lengths(partitionId) = writer.getSize()
         if (blockId.isShuffle) {
           val mapid = blockId.asInstanceOf[ShuffleBlockId].mapId
           val shuffleid = blockId.asInstanceOf[ShuffleBlockId].shuffleId
           logInfo(s"frankfzw: shuffleid ${shuffleid} " + s"mapid ${mapid} " +
-            s"reduceid ${partitionId} size ${segment.length} partitioner " +
+            s"reduceid ${partitionId} size ${writer.getSize()} partitioner " +
             s"${partitioner.getClass.getName}")
         }
       }

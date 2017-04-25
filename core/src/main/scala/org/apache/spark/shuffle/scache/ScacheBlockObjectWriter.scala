@@ -18,10 +18,9 @@
 
 package org.apache.spark.shuffle.scache
 
-import java.io.{BufferedOutputStream, File, FileOutputStream, OutputStream}
+import java.io._
 import java.nio.channels.FileChannel
 
-import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream
 import org.apache.spark.Logging
 import org.apache.spark.serializer.{SerializationStream, SerializerInstance}
 import org.apache.spark.executor.ShuffleWriteMetrics
@@ -42,7 +41,7 @@ class ScacheBlockObjectWriter (
   extends DiskBlockObjectWriter(new File("/tmp/fake"), serializerInstance, bufferSize,
       compressStream, syncWrites, writeMetrics, blockId, daemon) with Logging{
 
-  private var bos: ByteOutputStream = null
+  private var bos: ByteArrayOutputStream = null
   private var bs: OutputStream = null
   private var ts: TimeTrackingOutputStream = null
   private var objOut: SerializationStream = null
@@ -59,7 +58,7 @@ class ScacheBlockObjectWriter (
     if (hasBeenClosed) {
       throw new IllegalStateException("Writer already closed. Cannot be reopened.")
     }
-    bos = new ByteOutputStream()
+    bos = new ByteArrayOutputStream()
     ts = new TimeTrackingOutputStream(writeMetrics, bos)
     bs = compressStream(new BufferedOutputStream(ts, bufferSize))
     objOut = serializerInstance.serializeStream(bs)
@@ -81,7 +80,7 @@ class ScacheBlockObjectWriter (
         objOut.close()
       }
       if (bos.size() > 0) {
-        daemon.putBlock(blockId, bos.getBytes, bos.size(), bos.size())
+        daemon.putBlock(blockId, bos.toByteArray, bos.size(), bos.size())
       }
 
       bs = null
@@ -105,9 +104,9 @@ class ScacheBlockObjectWriter (
 
   override def commitAndClose(): Unit = {
     if (initialized) {
-      finalPosition = bos.size()
       objOut.flush()
       bs.flush()
+      finalPosition = bos.size()
       close()
       // In certain compression codecs, more bytes are written after close() is called
       writeMetrics.incShuffleBytesWritten(finalPosition - reportedPosition)
