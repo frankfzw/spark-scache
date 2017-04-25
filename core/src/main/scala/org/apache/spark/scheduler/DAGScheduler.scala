@@ -982,6 +982,7 @@ class DAGScheduler(
           partitionsToCompute.map { id =>
             val p = s.partitions(id)
             val res = (id, getPreferredLocs(stage.rdd, p))
+            logDebug(s"frankfzw: task id ${id}, partition id ${p} loc ${res._2.mkString(", ")}")
             res
           }.toMap
       }
@@ -1574,14 +1575,7 @@ class DAGScheduler(
             return locs
           }
         }
-      case s: ShuffleDependency[_, _, _] =>
-        if (sc.conf.getBoolean("spark.scache.enable", false)) {
-          // frankfzw: ask SCache to get preferred location
-          val locs = sc.env.scacheDaemon.getShuffleStatusForPartition(s.shuffleId, partition)
-          if (locs.nonEmpty) {
-            return locs.map(TaskLocation(_))
-          }
-        }
+
       case _ =>
     }
 

@@ -99,7 +99,9 @@ private[spark] class ScacheDaemon (conf: SparkConf) extends Logging {
   }
 
   def getShuffleStatusForPartition(shuffleId: Int, reduceId: Int): Array[String] = {
-    getShuffleStatusInternal(runningJId, shuffleId).get(reduceId).getOrElse(new Array[String](0))
+    val statuses = getShuffleStatusInternal(runningJId, shuffleId)
+    val ret = statuses.get(reduceId).getOrElse(new Array[String](0))
+    ret
   }
 
   private def getShuffleStatusInternal

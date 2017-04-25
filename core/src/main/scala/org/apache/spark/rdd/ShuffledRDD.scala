@@ -87,9 +87,18 @@ class ShuffledRDD[K: ClassTag, V: ClassTag, C: ClassTag](
   }
 
   override protected def getPreferredLocations(partition: Partition): Seq[String] = {
-    val tracker = SparkEnv.get.mapOutputTracker.asInstanceOf[MapOutputTrackerMaster]
-    val dep = dependencies.head.asInstanceOf[ShuffleDependency[K, V, C]]
-    tracker.getPreferredLocationsForShuffle(dep, partition.index)
+    if (SparkEnv.get.conf.getBoolean("spark.scache.enable", false)) {
+      val dep = dependencies.head.asInstanceOf[ShuffleDependency[K, V, C]]
+      // frankfzw: ask SCache to get preferred location
+      val locs = SparkEnv.get.scacheDaemon.getShuffleStatusForPartition(dep.shuffleId, partition.index)
+      // logDebug(s"frankfzw: RDD ${this.toString}, shuffle ${dep.shuffleId}" +
+      //   s"p ${partition.index}, locs ${locs.mkString(", ")}")
+      locs.toSeq
+    } else {
+      val tracker = SparkEnv.get.mapOutputTracker.asInstanceOf[MapOutputTrackerMaster]
+      val dep = dependencies.head.asInstanceOf[ShuffleDependency[K, V, C]]
+      tracker.getPreferredLocationsForShuffle(dep, partition.index)
+    }
   }
 
   override def compute(split: Partition, context: TaskContext): Iterator[(K, C)] = {

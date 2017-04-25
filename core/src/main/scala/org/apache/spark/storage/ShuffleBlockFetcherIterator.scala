@@ -22,11 +22,11 @@ import java.util.concurrent.LinkedBlockingQueue
 
 import scala.collection.mutable.{ArrayBuffer, HashSet, Queue}
 import scala.util.control.NonFatal
-
-import org.apache.spark.{Logging, SparkException, TaskContext}
+import org.apache.spark.{Logging, SparkEnv, SparkException, TaskContext}
 import org.apache.spark.network.buffer.ManagedBuffer
 import org.apache.spark.network.shuffle.{BlockFetchingListener, ShuffleClient}
 import org.apache.spark.shuffle.FetchFailedException
+import org.apache.spark.shuffle.scache.ScacheBlockTransferService
 import org.apache.spark.util.Utils
 
 /**
@@ -254,21 +254,62 @@ final class ShuffleBlockFetcherIterator(
   private[this] def initialize(): Unit = {
     // Add a task completion callback (called in both success case and failure case) to cleanup.
     context.addTaskCompletionListener(_ => cleanup())
+    // frankfzw: try to fetch from scache
+    if (SparkEnv.get.conf.getBoolean("spark.scache.enable", false)) {
+      val scacheFetcher = new ScacheBlockTransferService(SparkEnv.get.scacheDaemon)
+      for ((address, blockInfo) <- blocksByAddress) {
+        logDebug(s"frankfzw: Start fetch blocks ${blockInfo.mkString(", ")} from SCache")
+        scacheFetch(address, blockInfo, scacheFetcher)
+      }
+    } else {
+      // Split local and remote blocks.
+      val remoteRequests = splitLocalRemoteBlocks()
+      // Add the remote requests into our queue in a random order
+      fetchRequests ++= Utils.randomize(remoteRequests)
 
-    // Split local and remote blocks.
-    val remoteRequests = splitLocalRemoteBlocks()
-    // Add the remote requests into our queue in a random order
-    fetchRequests ++= Utils.randomize(remoteRequests)
+      // Send out initial requests for blocks, up to our maxBytesInFlight
+      fetchUpToMaxBytes()
 
-    // Send out initial requests for blocks, up to our maxBytesInFlight
-    fetchUpToMaxBytes()
+      val numFetches = remoteRequests.size - fetchRequests.size
+      logInfo("Started " + numFetches + " remote fetches in" + Utils.getUsedTimeMs(startTime))
 
-    val numFetches = remoteRequests.size - fetchRequests.size
-    logInfo("Started " + numFetches + " remote fetches in" + Utils.getUsedTimeMs(startTime))
+      // Get Local Blocks
+      fetchLocalBlocks()
+      logDebug("Got local blocks in " + Utils.getUsedTimeMs(startTime))
+    }
 
-    // Get Local Blocks
-    fetchLocalBlocks()
-    logDebug("Got local blocks in " + Utils.getUsedTimeMs(startTime))
+  }
+
+  // frankfzw: add funciton to fetch block from SCache
+  private[this] def scacheFetch(
+      address: BlockManagerId,
+      blockInfo: Seq[(BlockId, Long)],
+      fetcher: ScacheBlockTransferService): Unit = {
+    val blockIds = blockInfo.toArray.map(x => x._1.toString)
+    val sizeMap = blockInfo.toArray.map {case (bid, size) => (bid.toString, size)}.toMap
+    fetcher.fetchBlocks(address.host, address.port, address.executorId, blockIds,
+      new BlockFetchingListener {
+        override def onBlockFetchSuccess(blockId: String, buf: ManagedBuffer): Unit = {
+          // Only add the buffer to results queue if the iterator is not zombie,
+          // i.e. cleanup() has not been called yet.
+          if (!isZombie) {
+            // Increment the ref count because we need to pass this to a different thread.
+            // This needs to be released after use.
+            buf.retain()
+            results.put(new SuccessFetchResult(BlockId(blockId), address, sizeMap(blockId), buf))
+            shuffleMetrics.incRemoteBytesRead(buf.size)
+            shuffleMetrics.incRemoteBlocksFetched(1)
+          }
+          logDebug("frankfzw: Got remote block " + blockId
+            + " frome SCache after " + Utils.getUsedTimeMs(startTime))
+        }
+
+        override def onBlockFetchFailure(blockId: String, e: Throwable): Unit = {
+          logError(s"frankfzw: Failed to get block(s) from SCache", e)
+          results.put(new FailureFetchResult(BlockId(blockId), address, e))
+        }
+      }
+    )
   }
 
   override def hasNext: Boolean = numBlocksProcessed < numBlocksToFetch
