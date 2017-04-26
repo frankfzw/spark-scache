@@ -259,8 +259,10 @@ final class ShuffleBlockFetcherIterator(
       val scacheFetcher = new ScacheBlockTransferService(SparkEnv.get.scacheDaemon)
       for ((address, blockInfo) <- blocksByAddress) {
         logDebug(s"frankfzw: Start fetch blocks ${blockInfo.mkString(", ")} from SCache")
+        numBlocksToFetch += blockInfo.length
         scacheFetch(address, blockInfo, scacheFetcher)
       }
+      logDebug(s"frankfzw: Total blocks to fetch ${numBlocksToFetch}")
     } else {
       // Split local and remote blocks.
       val remoteRequests = splitLocalRemoteBlocks()
@@ -280,13 +282,13 @@ final class ShuffleBlockFetcherIterator(
 
   }
 
-  // frankfzw: add funciton to fetch block from SCache
+  // frankfzw: add function to fetch block from SCache
   private[this] def scacheFetch(
       address: BlockManagerId,
       blockInfo: Seq[(BlockId, Long)],
       fetcher: ScacheBlockTransferService): Unit = {
     val blockIds = blockInfo.toArray.map(x => x._1.toString)
-    val sizeMap = blockInfo.toArray.map {case (bid, size) => (bid.toString, size)}.toMap
+    // val sizeMap = blockInfo.toArray.map {case (bid, size) => (bid.toString, size)}.toMap
     fetcher.fetchBlocks(address.host, address.port, address.executorId, blockIds,
       new BlockFetchingListener {
         override def onBlockFetchSuccess(blockId: String, buf: ManagedBuffer): Unit = {
@@ -296,12 +298,12 @@ final class ShuffleBlockFetcherIterator(
             // Increment the ref count because we need to pass this to a different thread.
             // This needs to be released after use.
             buf.retain()
-            results.put(new SuccessFetchResult(BlockId(blockId), address, sizeMap(blockId), buf))
-            shuffleMetrics.incRemoteBytesRead(buf.size)
-            shuffleMetrics.incRemoteBlocksFetched(1)
+            results.put(new SuccessFetchResult(BlockId(blockId), address, 0L, buf))
+            shuffleMetrics.incLocalBlocksFetched(1)
+            shuffleMetrics.incLocalBytesRead(buf.size)
           }
           logDebug("frankfzw: Got remote block " + blockId
-            + " frome SCache after " + Utils.getUsedTimeMs(startTime))
+            + " size " + buf.size() +" from SCache after " + Utils.getUsedTimeMs(startTime))
         }
 
         override def onBlockFetchFailure(blockId: String, e: Throwable): Unit = {
@@ -343,6 +345,7 @@ final class ShuffleBlockFetcherIterator(
 
       case SuccessFetchResult(blockId, address, _, buf) =>
         try {
+          logDebug(s"frankfzw: Read block ${result.blockId}, processed block ${numBlocksProcessed}")
           (result.blockId, new BufferReleasingInputStream(buf.createInputStream(), this))
         } catch {
           case NonFatal(t) =>
