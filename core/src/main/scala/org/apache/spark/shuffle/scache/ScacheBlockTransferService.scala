@@ -46,9 +46,9 @@ class ScacheBlockTransferService(daemon: ScacheDaemon) extends Logging{
       execId: String,
       blockIds: Array[String],
       listener: BlockFetchingListener): Unit = {
-    val thread = new Thread {
-      override def run: Unit = {
-        for (bid <- blockIds) {
+    for (bid <- blockIds) {
+      val thread = new Thread {
+        override def run: Unit = {
           daemon.getBlock(BlockId.apply(bid)) match {
             case Some(data) =>
               val ret = ByteBuffer.allocate(data.size)
@@ -60,8 +60,8 @@ class ScacheBlockTransferService(daemon: ScacheDaemon) extends Logging{
           }
         }
       }
+      thread.start()
     }
-    thread.start()
   }
 
 
