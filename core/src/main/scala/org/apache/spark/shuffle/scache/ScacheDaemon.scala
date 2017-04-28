@@ -23,6 +23,7 @@ import java.net.InetAddress
 import com.google.common.net.InetAddresses
 import java.util.concurrent.ConcurrentHashMap
 
+import org.apache.spark.scheduler.MapStatus
 import org.apache.spark.storage.{BlockId, ScacheBlockId, ShuffleBlockId}
 import org.apache.spark.{Logging, ShuffleDependency, SparkConf}
 import org.scache.deploy.Daemon
@@ -43,8 +44,14 @@ private[spark] class ScacheDaemon (conf: SparkConf) extends Logging {
 
   private var runningJId: Int = -1
 
-  def setRunningJId(jid: Int): Unit = {
+  def setRunningJId(jid: Int, shuffleId: Int, reduceNum: Int): Unit = {
     logDebug(s"Update jid from $runningJId to $jid")
+    runningJId = jid
+    daemon.mapStart(jid, shuffleId, reduceNum)
+  }
+
+  def setRunningJId(jid: Int): Unit = {
+    logDebug(s"Update jid from $runningJId to $jid by driver")
     runningJId = jid
   }
 
@@ -127,12 +134,17 @@ private[spark] class ScacheDaemon (conf: SparkConf) extends Logging {
     }
   }
 
-  def mapEnd(jobId: Int, shuffleId: Int, mapId: Int): Unit = {
-    daemon.mapEnd(jobId, shuffleId, mapId)
+  def mapEnd
+    (jobId: Int, shuffleId: Int, mapId: Int, reduce: Int, status: MapStatus): Unit = {
+    val sizes = new Array[Long](reduce)
+    for (i <- 0 until reduce) {
+      sizes(i) = status.getSizeForBlock(i)
+    }
+    daemon.mapEnd(jobId, shuffleId, mapId, sizes)
   }
 
-  def mapEnd(shuffleId: Int, mapId: Int): Unit = {
-    daemon.mapEnd(runningJId, shuffleId, mapId)
+  def mapEnd(shuffleId: Int, mapId: Int, reduce: Int, status: MapStatus): Unit = {
+    mapEnd(runningJId, shuffleId, mapId, reduce, status)
   }
 
   def stop(): Unit = {

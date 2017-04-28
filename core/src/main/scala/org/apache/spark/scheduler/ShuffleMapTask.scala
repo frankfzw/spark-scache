@@ -69,7 +69,8 @@ private[spark] class ShuffleMapTask(
     var writer: ShuffleWriter[Any, Any] = null
     // frankfzw: set job id of scache
     if (SparkEnv.get.conf.getBoolean("spark.scache.enable", false)) {
-      SparkEnv.get.scacheDaemon.setRunningJId(getJobId)
+      SparkEnv.get.scacheDaemon.setRunningJId(getJobId,
+        dep.shuffleId, dep.partitioner.numPartitions)
     }
     try {
       val manager = SparkEnv.get.shuffleManager
@@ -77,7 +78,17 @@ private[spark] class ShuffleMapTask(
       writer.write(rdd.iterator(partition, context).asInstanceOf[Iterator[_ <: Product2[Any, Any]]])
       logInfo(s"frankfzw: Job ${getJobId} ShuffleMapTask ${toString} finished," +
         s" writer ${writer.getClass.getName}")
-      writer.stop(success = true).get
+      val ret = writer.stop(success = true).get
+      // frankfzw: notify SCache of map end
+      if (SparkEnv.get.conf.getBoolean("spark.scache.enable", false)) {
+        SparkEnv.get.scacheDaemon.mapEnd(
+          getJobId,
+          dep.shuffleId,
+          partition.index,
+          dep.partitioner.numPartitions,
+          ret)
+      }
+      ret
     } catch {
       case e: Exception =>
         try {
