@@ -1828,7 +1828,7 @@ class SparkSubmitTests(unittest.TestCase):
             |def myfunc(x):
             |    return x + 1
             """)
-        proc = subprocess.Popen([self.sparkSubmit, "--py-files", zip, "--master",
+        proc = subprocess.Popen([self.sparkSubmit, "--py-files", zip, "--main",
                                 "local-cluster[1,1,1024]", script],
                                 stdout=subprocess.PIPE)
         out, err = proc.communicate()
@@ -1862,7 +1862,7 @@ class SparkSubmitTests(unittest.TestCase):
             """)
         self.create_spark_package("a:mylib:0.1")
         proc = subprocess.Popen([self.sparkSubmit, "--packages", "a:mylib:0.1", "--repositories",
-                                 "file:" + self.programDir, "--master",
+                                 "file:" + self.programDir, "--main",
                                  "local-cluster[1,1,1024]", script], stdout=subprocess.PIPE)
         out, err = proc.communicate()
         self.assertEqual(0, proc.returncode)
@@ -1882,7 +1882,7 @@ class SparkSubmitTests(unittest.TestCase):
         # this will fail if you have different spark.executor.memory
         # in conf/spark-defaults.conf
         proc = subprocess.Popen(
-            [self.sparkSubmit, "--master", "local-cluster[1,1,1024]", script],
+            [self.sparkSubmit, "--main", "local-cluster[1,1,1024]", script],
             stdout=subprocess.PIPE)
         out, err = proc.communicate()
         self.assertEqual(0, proc.returncode)
@@ -1893,7 +1893,7 @@ class ContextTests(unittest.TestCase):
 
     def test_failed_sparkcontext_creation(self):
         # Regression test for SPARK-1550
-        self.assertRaises(Exception, lambda: SparkContext("an-invalid-master-name"))
+        self.assertRaises(Exception, lambda: SparkContext("an-invalid-main-name"))
 
     def test_get_or_create(self):
         with SparkContext.getOrCreate() as sc:
